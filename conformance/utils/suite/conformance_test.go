@@ -71,3 +71,36 @@ func TestParseKeyValuePairs(t *testing.T) {
 		}
 	}
 }
+
+func TestConformanceTestRunSkipProvisional(t *testing.T) {
+	tests := []struct {
+		name            string
+		provisional     bool
+		skipProvisional bool
+		expectRan       bool
+	}{
+		{name: "provisional test is skipped when skipping provisional tests", provisional: true, skipProvisional: true, expectRan: false},
+		{name: "provisional test runs when not skipping provisional tests", provisional: true, skipProvisional: false, expectRan: true},
+		{name: "non-provisional test runs when skipping provisional tests", provisional: false, skipProvisional: true, expectRan: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ran := false
+			ct := ConformanceTest{
+				ShortName:   "Fake",
+				Provisional: tc.provisional,
+				Test:        func(*testing.T, *ConformanceTestSuite) { ran = true },
+			}
+			s := &ConformanceTestSuite{
+				SkipProvisionalTests: tc.skipProvisional,
+				SkipTests:            sets.New[string](),
+			}
+			// Run in a subtest so t.Skipf only ends the subtest.
+			t.Run("run", func(t *testing.T) { ct.Run(t, s) })
+			if ran != tc.expectRan {
+				t.Errorf("expected test body ran=%v, got %v", tc.expectRan, ran)
+			}
+		})
+	}
+}
